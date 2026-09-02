@@ -12,7 +12,7 @@
 
 import os
 import sys
-from PyInstaller.utils.hooks import collect_dynamic_libs, collect_data_files
+from PyInstaller.utils.hooks import collect_dynamic_libs, collect_data_files, collect_submodules
 
 block_cipher = None
 project_dir = SPECPATH
@@ -34,6 +34,7 @@ datas.append((os.path.join(project_dir, 'qrc_resources.py'), '.'))
 
 # osgeo may require additional data files / dylibs
 datas += collect_data_files('osgeo', include_py_files=False)
+datas += collect_data_files('taichi', include_py_files=True)
 binaries = collect_dynamic_libs('osgeo')
 
 # PyTorch (used for Apple Silicon MPS GPU support)
@@ -57,7 +58,7 @@ hiddenimports = [
     'numpy', 'scipy', 'scipy.signal',
     'PIL', 'PIL.Image',
     'qrc_resources',
-] + hiddenimports_torch
+] + hiddenimports_torch + collect_submodules('taichi')
 
 a = Analysis(
     [os.path.join(project_dir, 'vSky2.py')],

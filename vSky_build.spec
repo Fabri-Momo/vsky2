@@ -24,6 +24,7 @@ if os.path.isdir(proj_data):
 # CuPy needs its C++ include headers (including CCCL/Thrust/CUB/libcudacxx)
 # for JIT CUDA kernel compilation at runtime
 datas += collect_data_files('cupy')
+datas += collect_data_files('taichi', include_py_files=True)
 
 # Include all nvidia CUDA DLLs for CuPy GPU support
 binaries = []
@@ -59,7 +60,7 @@ a = Analysis(
         'PIL', 'PIL.Image',
         'qrc_resources',
         'nvidia.cuda_nvrtc',
-    ] + collect_submodules('cupy') + collect_submodules('cupy_backends'),
+    ] + collect_submodules('cupy') + collect_submodules('cupy_backends') + collect_submodules('taichi'),
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[os.path.join(project_dir, '_runtime_hook.py')],
