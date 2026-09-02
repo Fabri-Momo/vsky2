@@ -66,11 +66,11 @@ def main():
         print("\n" + "=" * 60)
         print("BUILD SUCCESSFUL!")
         if sys.platform == 'win32':
-            print("Executable: dist/vSky/vSky.exe")
+            print("Executable: dist/vSky2/vSky2.exe")
         elif sys.platform == 'darwin':
-            print("Application bundle: dist/vSky/vSky.app")
+            print("Application bundle: dist/vSky2.app")
         elif sys.platform.startswith('linux'):
-            print("Executable: dist/vSky/vSky")
+            print("Executable: dist/vSky2/vSky2")
         print("=" * 60)
     else:
         print("\n" + "=" * 60)

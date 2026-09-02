@@ -1,8 +1,8 @@
 """
-build_msi.py - Create a Windows MSI installer from the PyInstaller dist/vSky output using WiX Toolset.
+build_msi.py - Create a Windows MSI installer from the PyInstaller dist/vSky2 output using WiX Toolset.
 
 Prerequisites:
-    - Run setup.py first to generate dist/vSky/
+    - Run setup.py first to generate dist/vSky2/
     - WiX Toolset v3 installed (https://wixtoolset.org/releases/)
       or WiX v4+ via dotnet tool: dotnet tool install --global wix
     - On PATH: candle.exe and light.exe (WiX v3) or wix.exe (WiX v4+)
@@ -24,25 +24,22 @@ import xml.etree.ElementTree as ET
 # Configuration
 # ============================================================
 
-APP_NAME = "vSky"
-APP_VERSION = "1.1.0"
+APP_NAME = "vSky2"
+APP_VERSION = "2.0.0"
 APP_MANUFACTURER = "Universite de Bourgogne"
-APP_DESCRIPTION = "vSky - Volumetric Open Sky"
-APP_EXE = "vSky.exe"
+APP_DESCRIPTION = "vSky2 - Volumetric Open Sky"
+APP_EXE = "vSky2.exe"
 UPGRADE_CODE = "e8f3c2a1-5b7d-4e9f-a1c3-9d8e7f6b5a4c"  # Fixed GUID for upgrades
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-DIST_DIR = os.path.join(PROJECT_DIR, "dist", "vSky")
+DIST_DIR = os.path.join(PROJECT_DIR, "dist", "vSky2")
 BUILD_DIR = os.path.join(PROJECT_DIR, "build_msi")
-WXS_FILE = os.path.join(BUILD_DIR, "vSky.wxs")
-WIXOBJ_FILE = os.path.join(BUILD_DIR, "vSky.wixobj")
-MSI_FILE = os.path.join(PROJECT_DIR, "dist", f"{APP_NAME}-{APP_VERSION}.msi")
+WXS_FILE = os.path.join(BUILD_DIR, "vSky2.wxs")
+WIXOBJ_FILE = os.path.join(BUILD_DIR, "vSky2.wixobj")
+MSI_FILE = os.path.join(PROJECT_DIR, "dist", f"vSky-{APP_VERSION}.msi")
 
-ICON_FILE = os.path.join(PROJECT_DIR, "icon_vSky.ico")
-if not os.path.isfile(ICON_FILE):
-    ICON_FILE = os.path.join(PROJECT_DIR, "resources", "images", "icon.ico")
-
-LOGO_PNG = os.path.join(PROJECT_DIR, "resources", "images", "icon.png")
+ICON_FILE = os.path.join(PROJECT_DIR, "vSky2.ico")
+LOGO_PNG = os.path.join(PROJECT_DIR, "vSky2.png")
 BANNER_BMP = os.path.join(BUILD_DIR, "banner.bmp")
 DIALOG_BMP = os.path.join(BUILD_DIR, "dialog.bmp")
 
@@ -357,9 +354,9 @@ def _create_license_rtf(rtf_path):
     rtf_content = r"""{\rtf1\ansi\deff0
 {\fonttbl{\f0\fswiss Helvetica;}}
 \f0\fs20
-\b vSky - Volumetric Open Sky\b0\par
+\b vSky2 - Volumetric Open Sky\b0\par
 \par
-Copyright (c) 2020 Universite de Bourgogne\par
+Copyright (c) 2026 Universite de Bourgogne\par
 Fabrice Monna, Tanguy Rolland\par
 \par
 This software is distributed under the GNU General Public License v3.0.\par

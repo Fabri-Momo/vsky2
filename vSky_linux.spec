@@ -9,7 +9,7 @@
 # - CUDA libraries are NOT bundled by default; the target system needs a
 #   compatible NVIDIA driver and (optionally) a CUDA toolkit for CuPy.
 # - GDAL and PROJ data directories are expected from a conda-forge env.
-# - The generated output is dist/vSky/vSky (executable folder)
+# - The generated output is dist/vSky2/vSky2 (executable folder)
 
 import os
 import sys
@@ -100,7 +100,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vSky',
+    name='vSky2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -122,5 +122,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='vSky',
+    name='vSky2',
 )

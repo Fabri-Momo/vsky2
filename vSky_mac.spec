@@ -8,7 +8,7 @@
 # - CUDA/CuPy is not available on macOS.
 # - GPU support on Apple Silicon uses PyTorch MPS (Metal Performance Shaders).
 # - GDAL and PROJ data directories are expected from a conda-forge env.
-# - The generated output is dist/vSky/vSky.app
+# - The generated output is dist/vSky2.app
 
 import os
 import sys
@@ -78,7 +78,7 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# macOS icon (convert icon_vSky.ico to icon_vSky.icns first)
+# macOS icon
 icon_path = os.path.join(project_dir, 'vSky2.icns')
 if not os.path.isfile(icon_path):
     icon_path = None
@@ -89,7 +89,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='vSky',
+    name='vSky2',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -111,12 +111,12 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='vSky',
+    name='vSky2',
 )
 
 app = BUNDLE(
     coll,
-    name='vSky.app',
+    name='vSky2.app',
     icon=icon_path,
     bundle_identifier='fr.u-bourgogne.vsky',
 )

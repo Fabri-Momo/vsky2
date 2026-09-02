@@ -41,15 +41,15 @@ jobs:
           conda run -n vsky python build_msi.py
 
       - name: Create portable ZIP
-        run: Compress-Archive -Path dist/vSky -DestinationPath dist/vSky-Windows-x64.zip
+        run: Compress-Archive -Path dist/vSky2 -DestinationPath dist/vSky2-Windows-x64.zip
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vSky-Windows-x64
+          name: vSky2-Windows-x64
           path: |
-            dist/vSky-Windows-x64.zip
-            dist/*.msi
+            dist/vSky2-Windows-x64.zip
+            dist/vSky-2.0.0.msi
           if-no-files-found: error
 
   macos:
@@ -81,11 +81,11 @@ jobs:
         run: python setup.py
 
       - name: Create application ZIP
-        run: ditto -c -k --sequesterRsrc --keepParent dist/vSky.app dist/vSky-macOS-Apple-Silicon.zip
+        run: ditto -c -k --sequesterRsrc --keepParent dist/vSky2.app dist/vSky2-macOS-Apple-Silicon.zip
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
         with:
-          name: vSky-macOS-Apple-Silicon
-          path: dist/vSky-macOS-Apple-Silicon.zip
+          name: vSky2-macOS-Apple-Silicon
+          path: dist/vSky2-macOS-Apple-Silicon.zip
           if-no-files-found: error

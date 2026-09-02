@@ -30,7 +30,7 @@ conda activate vsky
 python setup.py
 ```
 
-L'exécutable se trouve dans `dist/vSky/vSky.exe`.
+L'exécutable se trouve dans `dist/vSky2/vSky2.exe`.
 
 ### macOS
 
@@ -39,7 +39,7 @@ conda activate vsky
 python -m PyInstaller --noconfirm --clean vSky_mac.spec
 ```
 
-Le bundle `.app` se trouve dans `dist/vSky/vSky.app`.
+Le bundle `.app` se trouve dans `dist/vSky2.app`.
 
 ## Documentation
 
