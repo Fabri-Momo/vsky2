@@ -44,14 +44,63 @@ jobs:
           assert Path('vsky-QGIS_plugin', metadata['icon']).is_file()
           PY
 
+  qgis3:
+    name: QGIS 3.44 LTR and Qt 5
+    runs-on: ubuntu-latest
+    container:
+      image: qgis/qgis:3.44
+    env:
+      QT_QPA_PLATFORM: offscreen
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Load Processing provider
+        run: |
+          cp -R vsky-QGIS_plugin /tmp/vsky
+          PYTHONPATH=/tmp python3 - <<'PY'
+          from qgis.core import QgsApplication
+          import vsky
+
+          app = QgsApplication([], False)
+          app.initQgis()
+          plugin = vsky.classFactory(None)
+          plugin.initGui()
+          provider = QgsApplication.processingRegistry().providerById('ub')
+          assert provider is not None
+          assert any(algorithm.name() == 'vsky' for algorithm in provider.algorithms())
+          plugin.unload()
+          app.exitQgis()
+          PY
+
   qgis4:
     name: QGIS 4 and Qt 6
     runs-on: ubuntu-latest
     container:
       image: ghcr.io/qgis/pyqgis4-checker:main-ubuntu
+    env:
+      QT_QPA_PLATFORM: offscreen
     steps:
       - name: Check out sources
         uses: actions/checkout@v4
+
+      - name: Load Processing provider
+        run: |
+          cp -R vsky-QGIS_plugin /tmp/vsky
+          PYTHONPATH=/tmp python3 - <<'PY'
+          from qgis.core import QgsApplication
+          import vsky
+
+          app = QgsApplication([], False)
+          app.initQgis()
+          plugin = vsky.classFactory(None)
+          plugin.initGui()
+          provider = QgsApplication.processingRegistry().providerById('ub')
+          assert provider is not None
+          assert any(algorithm.name() == 'vsky' for algorithm in provider.algorithms())
+          plugin.unload()
+          app.exitQgis()
+          PY
 
       - name: Run QGIS 4 migration checker
         run: pyqt5_to_pyqt6.py --dry_run --logfile pyqgis4-checker.log vsky-QGIS_plugin/
