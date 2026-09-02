@@ -81,7 +81,7 @@ jobs:
         run: python setup.py
 
       - name: Create application ZIP
-        run: ditto -c -k --sequesterRsrc --keepParent dist/vSky/vSky.app dist/vSky-macOS-Apple-Silicon.zip
+        run: ditto -c -k --sequesterRsrc --keepParent dist/vSky.app dist/vSky-macOS-Apple-Silicon.zip
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
