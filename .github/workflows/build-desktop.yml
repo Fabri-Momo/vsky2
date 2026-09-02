@@ -34,6 +34,9 @@ jobs:
       - name: Build Windows application
         run: conda run -n vsky python setup.py
 
+      - name: Test Windows application
+        run: dist/vSky2/vSky2.exe --smoke-test
+
       - name: Build MSI installer
         run: |
           $wixBin = Get-ChildItem "${env:ProgramFiles(x86)}\WiX Toolset*\bin" -Directory | Select-Object -First 1
@@ -74,6 +77,9 @@ jobs:
 
       - name: Build macOS application
         run: python setup.py
+
+      - name: Test macOS application
+        run: dist/vSky2.app/Contents/MacOS/vSky2 --smoke-test
 
       - name: Create DMG
         run: |

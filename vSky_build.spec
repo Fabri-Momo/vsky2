@@ -25,6 +25,7 @@ if os.path.isdir(proj_data):
 # for JIT CUDA kernel compilation at runtime
 datas += collect_data_files('cupy')
 datas += collect_data_files('taichi', include_py_files=True)
+datas.append((os.path.join(project_dir, 'vsky_taichi.py'), '.'))
 
 # Include all nvidia CUDA DLLs for CuPy GPU support
 binaries = []

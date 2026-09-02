@@ -35,6 +35,7 @@ datas.append((os.path.join(project_dir, 'qrc_resources.py'), '.'))
 # osgeo may require additional data files / dylibs
 datas += collect_data_files('osgeo', include_py_files=False)
 datas += collect_data_files('taichi', include_py_files=True)
+datas.append((os.path.join(project_dir, 'vsky_taichi.py'), '.'))
 binaries = collect_dynamic_libs('osgeo')
 
 # PyTorch (used for Apple Silicon MPS GPU support)

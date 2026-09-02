@@ -38,8 +38,18 @@ qrc_resources.qInitResources()
 # Taichi est le moteur de calcul cross-platform (NVIDIA/AMD/Intel/Apple/CPU).
 TAICHI_AVAILABLE = False
 ti = None
+_taichi_accumulate_chunk = None
 try:
     import taichi as ti
+    if getattr(sys, 'frozen', False):
+        import importlib.util
+        kernel_path = os.path.join(sys._MEIPASS, 'vsky_taichi.py')
+        kernel_spec = importlib.util.spec_from_file_location('vsky_taichi_source', kernel_path)
+        kernel_module = importlib.util.module_from_spec(kernel_spec)
+        kernel_spec.loader.exec_module(kernel_module)
+        _taichi_accumulate_chunk = kernel_module.accumulate_chunk
+    else:
+        from vsky_taichi import accumulate_chunk as _taichi_accumulate_chunk
     TAICHI_AVAILABLE = True
 except Exception:
     TAICHI_AVAILABLE = False
@@ -50,41 +60,6 @@ GPU_AVAILABLE = False
 # Number of directions processed per Taichi kernel call.
 # Larger = fewer kernel launches, but more VRAM. 256 is a good default for Taichi.
 DIRECTION_CHUNK_SIZE = 256
-
-
-@ti.kernel
-def _taichi_accumulate_chunk(
-    image: ti.types.ndarray(ndim=2),
-    grid: ti.types.ndarray(ndim=2),
-    h: ti.types.ndarray(ndim=1),
-    start: ti.i32,
-    end: ti.i32,
-    acc_vo: ti.types.ndarray(ndim=2),
-    acc_vop: ti.types.ndarray(ndim=2),
-):
-    """Accumule VO et VOP pour un paquet de directions (kernel Taichi)."""
-    H = image.shape[0]
-    W = image.shape[1]
-    for x, y in acc_vo:
-        vo = 0.0
-        vop = 0.0
-        for i in range(start, end):
-            dx = grid[i, 0]
-            dy = grid[i, 1]
-            nx = (x + dx) % H
-            ny = (y + dy) % W
-            diff = h[i] - (image[nx, ny] - image[x, y])
-            if diff < 0.0:
-                diff = 0.0
-            elif diff > 2.0 * h[i]:
-                diff = 2.0 * h[i]
-            vo += diff
-            svf = diff
-            if svf > h[i]:
-                svf = h[i]
-            vop += svf
-        acc_vo[x, y] += vo
-        acc_vop[x, y] += vop
 
 
 def _init_taichi():
@@ -1972,6 +1947,10 @@ def main():
     # Initialize Taichi on the main thread before any QThread uses it.
     _init_taichi()
     _taichi_precompile()
+    if '--smoke-test' in sys.argv:
+        if not TAICHI_AVAILABLE:
+            raise RuntimeError('Taichi is unavailable')
+        return 0
 
     app = QApplication(sys.argv)
     QLocale.setDefault(QLocale.c())
