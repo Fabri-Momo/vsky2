@@ -1,0 +1,7 @@
+PyQt5>=5.15
+numpy>=1.19
+scipy>=1.5
+Pillow>=8.0
+GDAL>=3.0
+# GPU acceleration cross-platform (NVIDIA/AMD/Intel/Apple Silicon) via Taichi
+taichi

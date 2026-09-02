@@ -1,0 +1,18 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+<file alias="icon.png">resources/images/icon.png</file>
+</qresource>
+<qresource>
+<file alias="credits.html">resources/doc/en/credits.html</file>
+<file alias="workflow.html">resources/doc/en/workflow.html</file>
+<file alias="index.html">resources/doc/en/index.html</file>
+</qresource>
+<qresource lang="fr_FR">
+<file alias="credits.html">resources/doc/fr_FR/credits.html</file>
+<file alias="workflow.html">resources/doc/fr_FR/workflow.html</file>
+<file alias="index.html">resources/doc/fr_FR/index.html</file>
+</qresource>
+<qresource>
+<file>vSky_fr_FR.qm</file>
+</qresource>
+</RCC>

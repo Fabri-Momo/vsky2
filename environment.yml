@@ -1,0 +1,13 @@
+name: vsky
+channels:
+  - conda-forge
+dependencies:
+  - python=3.8
+  - pyqt=5
+  - numpy
+  - scipy
+  - pillow
+  - gdal
+  # GPU acceleration cross-platform via Taichi (NVIDIA/AMD/Intel/Apple Silicon)
+  - pip:
+    - taichi

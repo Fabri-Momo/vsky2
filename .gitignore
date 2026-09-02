@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+
+# Virtual environments
+.env/
+.venv/
+env/
+venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.suo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# PyInstaller builds
+build/
+dist/
+out/
+
+# Logs
+*.log
+
+# Sample / archive data
+dem.tif
+*.zip
+*.msi
+*.wixpdb
+
+# Old assets
+icon_vSky.ico
+icon_vSky.icns
+
+# WiX intermediate files
+build_msi/vSky.wixobj
