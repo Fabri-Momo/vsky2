@@ -1,0 +1,46 @@
+# This file contains metadata for your plugin.
+
+# This file should be included when you package your plugin.# Mandatory items:
+
+[general]
+name=vSky
+qgisMinimumVersion=3.34
+qgisMaximumVersion=4.99
+description=Ambient occlusion analysis for digital elevation models
+version=0.2.0
+author=Fabrice Monna, Tanguy Rolland
+email=Fabrice.Monna@u-bourgogne.fr, Tanguy.Rolland@u-bourgogne.fr
+
+about=Select the calculation to operate: VO for Volumetric open sky, VOP for a new calculation of positive skyview factor, VON for negative skyview factor Check 8-bits output if you wish additional treated maps in JPG format (after histogram stretching). Note that these files should be used for further calculation to the opposite of those in TIF format
+
+tracker=https://github.com/Fabri-Momo/vsky2/issues
+repository=https://github.com/Fabri-Momo/vsky2
+# End of mandatory metadata
+
+# Recommended items:
+
+hasProcessingProvider=yes
+# Uncomment the following line and add your changelog:
+# changelog=
+
+# Tags are comma separated with spaces allowed
+tags=raster, terrain, DEM, ambient occlusion, sky view factor
+
+homepage=https://github.com/Fabri-Momo/vsky2
+category=Raster
+icon=vsky-logo.png
+# experimental flag
+experimental=True
+
+# deprecated flag (applies to the whole plugin, not just a single version)
+deprecated=False
+
+# Since QGIS 3.8, a comma separated list of plugins to be installed
+# (or upgraded) can be specified.
+# Check the documentation for more information.
+# plugin_dependencies=
+
+
+# If the plugin can run on QGIS Server.
+server=False
+

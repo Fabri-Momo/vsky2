@@ -1,0 +1,65 @@
+name: Validate QGIS plugin
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - vsky-QGIS_plugin/**
+      - .github/workflows/qgis-plugin.yml
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python and metadata
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate Python syntax
+        run: python -m py_compile vsky-QGIS_plugin/__init__.py vsky-QGIS_plugin/vsky.py vsky-QGIS_plugin/vsky_provider.py vsky-QGIS_plugin/vsky_algorithm.py vsky-QGIS_plugin/algorithms.py
+
+      - name: Validate metadata
+        run: |
+          python - <<'PY'
+          import configparser
+          from pathlib import Path
+
+          parser = configparser.ConfigParser()
+          parser.optionxform = str
+          parser.read(Path('vsky-QGIS_plugin/metadata.txt'), encoding='utf-8')
+          metadata = parser['general']
+          assert metadata['qgisMinimumVersion'] == '3.34'
+          assert metadata['qgisMaximumVersion'] == '4.99'
+          assert metadata['category'] == 'Raster'
+          assert Path('vsky-QGIS_plugin', metadata['icon']).is_file()
+          PY
+
+  qgis4:
+    name: QGIS 4 and Qt 6
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/qgis/pyqgis4-checker:main-ubuntu
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Run QGIS 4 migration checker
+        run: pyqt5_to_pyqt6.py --dry_run --logfile pyqgis4-checker.log vsky-QGIS_plugin/
+
+      - name: Upload checker report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyqgis4-checker-report
+          path: pyqgis4-checker.log
+          if-no-files-found: ignore
