@@ -153,7 +153,7 @@ class VSkyAlgorithm(QgsProcessingAlgorithm):
         Returns the translated algorithm name, which should be used for any
         user-visible display of the algorithm name.
         """
-        return self.tr('vSky')
+        return self.tr('vSky2')
 
     def icon(self):
         """
@@ -161,7 +161,7 @@ class VSkyAlgorithm(QgsProcessingAlgorithm):
         the Processing toolbox.
         """
         folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
-        icon = QIcon(os.path.join(folder, 'vsky-logo.png'))
+        icon = QIcon(os.path.join(folder, 'vSky2.png'))
         return icon
 
 

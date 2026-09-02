@@ -1,5 +1,5 @@
 **![Une image contenant texte Description générée
-automatiquement](media/890f407893b83042da4f24c84ecc2091.jpeg)Welcome to vSky!**
+automatiquement](media/890f407893b83042da4f24c84ecc2091.jpeg)Welcome to vSky2!**
 
 Version 1.0
 
@@ -11,8 +11,8 @@ Volumetric Obscurance as a New Tool to Better Visualize Relief from Digital
 Elevation Models. RemoteSens. 2022, 14, 941.
 <https://doi.org/10.3390/rs14040941>. See the file: remotesensing-14-00941.pdf
 
-vSky aims at providing insights for scientists to reveal relief variations in
-digital elevation models (DEMs). The three new algorithms implemented in vSky
+vSky2 aims at providing insights for scientists to reveal relief variations in
+digital elevation models (DEMs). The three new algorithms implemented in vSky2
 can be easily tuned to highlight small-scale and/or large-scale irregularities.
 Outputs are provided as 32-bits GeoTIFF rasters, usable for further calculation
 or integration in any GIS environments, and optionally, as 8-bits images
@@ -21,13 +21,13 @@ publications. These new DEM treatments are easily obtained, even with
 consumer-grade computers. They may efficiently complement other available DEM
 treatments, in extending interpretation capabilities in a broad field of
 scientific activities: e.g. geology, geomorphology, hydrology, archaeology,
-cultural heritage. vSky possesses a user-friendly, graphical user interface. A
+cultural heritage. vSky2 possesses a user-friendly, graphical user interface. A
 standalone executable produced for Windows is provided together with a QGIS
 plugin. That make them work out of the box, without any fancy installation.
 
 **Window version**
 
-**Installation**. Unzip the folder named vSky.zip into the installation
+**Installation**. Unzip the folder named vSky2.zip into the installation
 directory of your choice. The created folder contains five files: a shortcut to
 the exe file, a folder containing the software body, and four DEM examples,
 Jura.tif, Mongolia.tif, Siberia.tif, and Tanzania.tif representing respectively
@@ -37,7 +37,7 @@ either discussed in the accompanying article or used as example in the present
 user manual. Then, just run the exe.
 
 **Opening a new DEM**. Only projected DEM in GeoTIFF format are accepted by
-vSky. Simply open the file of interest from the File menu. No data values should
+vSky2. Simply open the file of interest from the File menu. No data values should
 be set at -32767 or 32767. The DEM, greyscale converted for visual examination,
 appears in the ‘*DEM to be treated*’ frame (see A in Fig. 1). Its path is
 recalled in the ‘*Path’* frame for facilitating further file manipulation (see B
@@ -54,7 +54,7 @@ in Fig. 1).
 
 **![](media/aefa6720ae8771dafaf369c1aa3bf23b.jpeg)**
 
-**Figure 1:** Screenshot of the vSky software. The letters correspond to the
+**Figure 1:** Screenshot of the vSky2 software. The letters correspond to the
 different frames.
 
 **Calculation parameters**. The Volumetric Obscurance, namely VO, is always
@@ -117,7 +117,7 @@ with 128 Go of RAM and a Nvidia RTX 2080).
 
 **Computation time and advice**. The GPU acceleration allows to process a DEM
 rapidly, but for a very large DEM or large radius, it can become demanding in
-memory. On the other hand, vSky does not use multithreading in order to limit
+memory. On the other hand, vSky2 does not use multithreading in order to limit
 memory consumption. Relatively large DEM can therefore be processed, even with a
 consumer-grade computer, but calculation may take a while. Time roughly
 increases linearly with DEM size, and more importantly, with the square of the
@@ -132,7 +132,7 @@ by the different treatments.
 
 **QGIS version**
 
-**Installation**. The vSky plugin supports QGIS 3.34 or newer, including QGIS
+**Installation**. The vSky2 plugin supports QGIS 3.34 or newer, including QGIS
 3.44 LTR and QGIS 4.x, on Windows and macOS. The plugin archive must be installed
 from Plugins / Manage and Install Plugins… / Install from ZIP, then enabled from
 the Installed tab.
@@ -144,7 +144,7 @@ can be obtained by changing the properties dialog panel of the layer.
 ![Une image contenant texte Description générée
 automatiquement](media/be764613291cdb776d6201dfddaa9552.png)
 
-**Figure 3**: Screenshot of the vSky plugin panel in QGIS.
+**Figure 3**: Screenshot of the vSky2 plugin panel in QGIS.
 
 **Programming**
 

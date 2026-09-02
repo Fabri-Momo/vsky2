@@ -75,7 +75,7 @@ class VSkyProvider(QgsProcessingProvider):
 
         This string should be short (e.g. "Lastools") and localised.
         """
-        return self.tr('université de Bourgogne')
+        return self.tr('vSky2')
 
     def icon(self):
         """
@@ -83,7 +83,7 @@ class VSkyProvider(QgsProcessingProvider):
         the Processing toolbox.
         """
         folder = os.path.split(inspect.getfile(inspect.currentframe()))[0]
-        icon = QIcon(os.path.join(folder, 'uB-logo.png'))
+        icon = QIcon(os.path.join(folder, 'vSky2.png'))
         return icon
 
     def longName(self):

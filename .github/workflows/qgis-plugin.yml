@@ -38,9 +38,12 @@ jobs:
           parser.optionxform = str
           parser.read(Path('vsky-QGIS_plugin/metadata.txt'), encoding='utf-8')
           metadata = parser['general']
+          assert metadata['name'] == 'vSky2'
+          assert metadata['version'] == '2.0.0'
           assert metadata['qgisMinimumVersion'] == '3.34'
           assert metadata['qgisMaximumVersion'] == '4.99'
           assert metadata['category'] == 'Raster'
+          assert metadata['icon'] == 'vSky2.png'
           assert Path('vsky-QGIS_plugin', metadata['icon']).is_file()
           PY
 
