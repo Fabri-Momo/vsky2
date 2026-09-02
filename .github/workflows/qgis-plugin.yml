@@ -77,7 +77,7 @@ jobs:
     name: QGIS 4 and Qt 6
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/qgis/pyqgis4-checker:main-ubuntu
+      image: qgis/qgis:4.2
     env:
       QT_QPA_PLATFORM: offscreen
     steps:
@@ -101,6 +101,16 @@ jobs:
           plugin.unload()
           app.exitQgis()
           PY
+
+
+  checker:
+    name: QGIS 4 migration checker
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/qgis/pyqgis4-checker:main-ubuntu
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
 
       - name: Run QGIS 4 migration checker
         run: pyqt5_to_pyqt6.py --dry_run --logfile pyqgis4-checker.log vsky-QGIS_plugin/
