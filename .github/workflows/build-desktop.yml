@@ -40,16 +40,11 @@ jobs:
           if ($wixBin) { $env:PATH = "$($wixBin.FullName);$env:PATH" }
           conda run -n vsky python build_msi.py
 
-      - name: Create portable ZIP
-        run: Compress-Archive -Path dist/vSky2 -DestinationPath dist/vSky2-Windows-x64.zip
-
-      - name: Upload Windows artifacts
+      - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
           name: vSky2-Windows-x64
-          path: |
-            dist/vSky2-Windows-x64.zip
-            dist/vSky-2.0.0.msi
+          path: dist/vSky-2.0.0.msi
           if-no-files-found: error
 
   macos:
@@ -80,12 +75,16 @@ jobs:
       - name: Build macOS application
         run: python setup.py
 
-      - name: Create application ZIP
-        run: ditto -c -k --sequesterRsrc --keepParent dist/vSky2.app dist/vSky2-macOS-Apple-Silicon.zip
+      - name: Create DMG
+        run: |
+          mkdir -p dist/dmg
+          cp -R dist/vSky2.app dist/dmg/
+          ln -s /Applications dist/dmg/Applications
+          hdiutil create -volname vSky2 -srcfolder dist/dmg -ov -format UDZO dist/vSky2-macOS-Apple-Silicon.dmg
 
-      - name: Upload macOS artifact
+      - name: Upload macOS installer
         uses: actions/upload-artifact@v4
         with:
           name: vSky2-macOS-Apple-Silicon
-          path: dist/vSky2-macOS-Apple-Silicon.zip
+          path: dist/vSky2-macOS-Apple-Silicon.dmg
           if-no-files-found: error
