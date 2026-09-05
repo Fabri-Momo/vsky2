@@ -30,6 +30,7 @@ from PyQt5.QtWidgets import (QMainWindow,
 from PyQt5.QtGui import QPixmap, QImage, QIcon, QPainter, QPen, QColor
 from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QLocale, QTranslator, QObject, QSettings
 from osgeo import gdal, osr
+gdal.DontUseExceptions()
 import numpy as np
 from PIL import Image
 from scipy.signal import fftconvolve
@@ -896,6 +897,9 @@ class Processing(QWidget):
         self.checked_vop = False
         self.checked_von = False
         self.image_folder, self.image_name = os.path.split(image_path)
+        self.default_output_folder = os.path.join(
+            self.image_folder, os.path.splitext(self.image_name)[0] + "_processing"
+        )
         self.setup_ui()
         self._log_stream = _LogStream(self)
         self._log_stream.new_text.connect(self.log_message)
@@ -1047,6 +1051,14 @@ class Processing(QWidget):
         self.check_8_bits.setChecked(True)
         output_layout.addRow(self.check_8_bits)
 
+        output_folder_box = QGroupBox(self.tr("Output folder"))
+        output_folder_layout = QHBoxLayout(output_folder_box)
+        self.output_folder_edit = QLineEdit(self.default_output_folder, output_folder_box)
+        self.output_folder_btn = QPushButton(self.tr("Browse..."), output_folder_box)
+        self.output_folder_btn.clicked.connect(self._choose_output_folder)
+        output_folder_layout.addWidget(self.output_folder_edit)
+        output_folder_layout.addWidget(self.output_folder_btn)
+
         launch_box = QGroupBox(self.tr('Launch calculation'))
         launch_layout = QVBoxLayout()
         launch_box.setLayout(launch_layout)
@@ -1076,8 +1088,16 @@ class Processing(QWidget):
         secondary_right_layout.addWidget(prep_box)
         secondary_right_layout.addWidget(calc_param_box)
         secondary_right_layout.addWidget(output_box)
+        secondary_right_layout.addWidget(output_folder_box)
         secondary_right_layout.addStretch()
         secondary_right_layout.addWidget(launch_box)
+
+    def _choose_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Select output folder"), self.output_folder_edit.text() or self.image_folder
+        )
+        if folder:
+            self.output_folder_edit.setText(folder)
 
     def log_message(self, text):
         if hasattr(self, 'log_text'):
@@ -1213,6 +1233,19 @@ class Processing(QWidget):
             self.prep_blur_label.setEnabled(False)
 
     def click_calc(self):
+        output_folder = self.output_folder_edit.text().strip()
+        if not output_folder:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Select an output folder."))
+            return
+        output_folder = os.path.abspath(os.path.expanduser(output_folder))
+        try:
+            os.makedirs(output_folder, exist_ok=True)
+        except OSError as exc:
+            QMessageBox.warning(
+                self, self.tr("Warning"), self.tr("Could not create output folder: {}").format(exc)
+            )
+            return
+        self.output_folder_edit.setText(output_folder)
                      
 #         close result windows if they already exist  
                
@@ -1348,7 +1381,8 @@ class Processing(QWidget):
             blur = ''
 
         basename = os.path.splitext(self.image_name)[0]
-        name = os.path.join(self.image_folder, f'{basename}_{self.nm}_r={radius_value}{blur}{exagere}.{extension}')
+        output_folder = self.output_folder_edit.text().strip() or self.default_output_folder
+        name = os.path.join(output_folder, f'{basename}_{self.nm}_r={radius_value}{blur}{exagere}.{extension}')
         return name
 
     def saveImage(self):            
@@ -1375,7 +1409,8 @@ class Processing(QWidget):
         outBand.WriteArray(self.im, 0, 0)
         output.FlushCache()
         output = None
-        outBand = None   
+        outBand = None
+        self.log_message(self.tr("Processed file saved: {}").format(self.newname))
         
         # Construction of visual outputs
         
@@ -1388,6 +1423,7 @@ class Processing(QWidget):
             newname8bits = self._build_output_name('jpg').replace(f'_{self.nm}_', f'_{self.nm}_8bits_')
             self.im = Image.fromarray(self.out_image)
             self.im.save(newname8bits)
+            self.log_message(self.tr("Processed file saved: {}").format(newname8bits))
 
     def saveImageRGB(self):            
         
@@ -1408,6 +1444,7 @@ class Processing(QWidget):
             newname8bits = self._build_output_name('jpg').replace(f'_{self.nm}_', f'_{self.nm}_8bits_')
             im = Image.fromarray(self.out_image, mode='RGB')
             im.save(newname8bits)
+            self.log_message(self.tr("Processed file saved: {}").format(newname8bits))
             
                   
 class Calculation(QThread):
@@ -1953,6 +1990,9 @@ def main():
         return 0
 
     app = QApplication(sys.argv)
+    app.setApplicationName("vSky2")
+    app.setApplicationDisplayName("vSky2")
+    app.setOrganizationName("Université de Bourgogne")
     QLocale.setDefault(QLocale.c())
     locale = QLocale.system().name()
     print(locale)
