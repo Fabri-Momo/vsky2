@@ -1,7 +1,7 @@
 **![Une image contenant texte Description générée
 automatiquement](media/890f407893b83042da4f24c84ecc2091.jpeg)Welcome to vSky2!**
 
-Version 1.0
+Version 2.0
 
 **Presentation**.
 
@@ -27,14 +27,10 @@ plugin. That make them work out of the box, without any fancy installation.
 
 **Window version**
 
-**Installation**. Unzip the folder named vSky2.zip into the installation
-directory of your choice. The created folder contains five files: a shortcut to
-the exe file, a folder containing the software body, and four DEM examples,
-Jura.tif, Mongolia.tif, Siberia.tif, and Tanzania.tif representing respectively
-a part of a French mountainous area, funeral structures made of dry stones, rock
-art, and part of the area near to the Ngorongoro Volcanic High Plateau which are
-either discussed in the accompanying article or used as example in the present
-user manual. Then, just run the exe.
+**Installation**. On Windows, run the `vSky-2.0.0.msi` installer: it deploys
+vSky2 into `C:\Program Files\vSky2` and creates shortcuts. On macOS (Apple
+Silicon), open the `vSky2-macOS-Apple-Silicon.dmg` image and drag `vSky2.app`
+into Applications. Then, just launch the application.
 
 **Opening a new DEM**. Only projected DEM in GeoTIFF format are accepted by
 vSky2. Simply open the file of interest from the File menu. No data values should
@@ -85,8 +81,9 @@ is essentially visual, allowing rapid evaluation.
 **Launch calculation.** Run the calculation with the ‘*Calculate*’ button (see G
 in Fig. 1). The progression bar shows then the advancement of the computation.
 Once done, the 8-bits images corresponding to the selected treatments are
-displayed on screen (Fig. 2). All files are saved in the directory of the input
-DEM, with the following names:
+displayed on screen (Fig. 2). All files are saved in the output folder shown in
+the 'Output folder' frame, by default a `<DEM file name>_processing` directory
+created next to the input DEM, with the following names:
 
 \<DEM file name\>*\<treatment name\>*\<8bits[^1]\>_r=\< VO
 radius\>_smooth_r[^2]=\<smoothing radius\>_Z-exag3=\<exaggeration factor\>
@@ -95,9 +92,10 @@ radius\>_smooth_r[^2]=\<smoothing radius\>_Z-exag3=\<exaggeration factor\>
 
 [^2]: 
 
-For configurations compatible with CUDA 10, the button ’Use GPU’ should be
-checked. It allows to activate a GPU acceleration. The button appears in blue
-when GPU acceleration is toggled.
+When a compatible GPU is detected, the ’Use GPU’ button can be checked to
+activate GPU acceleration through Taichi (NVIDIA CUDA, AMD/Intel Vulkan, or
+Apple Metal depending on the platform). The button appears in blue when GPU
+acceleration is toggled.
 
 ![](media/b10ac3acbfd4b4f4dba16af62cdb9129.jpeg)
 
