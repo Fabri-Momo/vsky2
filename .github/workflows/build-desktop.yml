@@ -122,5 +122,6 @@ jobs:
         run: >-
           gh release create "$GITHUB_REF_NAME"
           dist/*.msi dist/*.dmg
+          --repo "${{ github.repository }}"
           --title "vSky2 $GITHUB_REF_NAME"
           --generate-notes
