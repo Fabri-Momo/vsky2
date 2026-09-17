@@ -1,5 +1,4 @@
-**![Une image contenant texte Description générée
-automatiquement](media/890f407893b83042da4f24c84ecc2091.jpeg)Welcome to vSky2!**
+**![vSky2 logo](media/890f407893b83042da4f24c84ecc2091.jpeg)Welcome to vSky2!**
 
 Version 2.0
 
@@ -139,8 +138,7 @@ the Installed tab.
 version, except that 8-bit outputs are not proposed (Fig. 3). If necessary, they
 can be obtained by changing the properties dialog panel of the layer.
 
-![Une image contenant texte Description générée
-automatiquement](media/be764613291cdb776d6201dfddaa9552.png)
+![vSky2 plugin panel in QGIS](media/be764613291cdb776d6201dfddaa9552.png)
 
 **Figure 3**: Screenshot of the vSky2 plugin panel in QGIS.
 

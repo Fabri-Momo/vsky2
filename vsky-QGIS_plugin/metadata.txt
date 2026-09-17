@@ -7,7 +7,7 @@ name=vSky2
 qgisMinimumVersion=3.34
 qgisMaximumVersion=4.99
 description=Ambient occlusion analysis for digital elevation models
-version=2.0.1
+version=2.0.2
 author=Fabrice Monna, Tanguy Rolland
 email=Fabrice.Monna@u-bourgogne.fr, Tanguy.Rolland@u-bourgogne.fr
 
@@ -20,8 +20,8 @@ repository=https://github.com/Fabri-Momo/vsky2
 # Recommended items:
 
 hasProcessingProvider=yes
-# Uncomment the following line and add your changelog:
-changelog=https://github.com/Fabri-Momo/vsky2/releases
+changelog=2.0.2 - English-only user interface (French translation no longer installed); documentation in English.
+    https://github.com/Fabri-Momo/vsky2/releases
 
 # Tags are comma separated with spaces allowed
 tags=raster, terrain, DEM, ambient occlusion, sky view factor

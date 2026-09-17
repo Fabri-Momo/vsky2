@@ -29,7 +29,7 @@ from PyQt5.QtWidgets import (QMainWindow,
         QPlainTextEdit,
         QSizePolicy)
 from PyQt5.QtGui import QPixmap, QImage, QIcon, QPainter, QPen, QColor
-from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QLocale, QTranslator, QObject, QSettings
+from PyQt5.QtCore import Qt, QUrl, QThread, pyqtSignal, QLocale, QObject, QSettings
 from osgeo import gdal, osr
 gdal.DontUseExceptions()
 import numpy as np
@@ -37,7 +37,7 @@ from PIL import Image
 import qrc_resources
 from vsky_version import __version__
 qrc_resources.qInitResources()
-# Taichi est le moteur de calcul cross-platform (NVIDIA/AMD/Intel/Apple/CPU).
+# Taichi is the cross-platform compute engine (NVIDIA/AMD/Intel/Apple/CPU).
 TAICHI_AVAILABLE = False
 ti = None
 _taichi_accumulate_chunk = None
@@ -1054,7 +1054,7 @@ class Processing(QWidget):
         calc_param_layout.addRow(self.tr("Radius:"), self.calc_param_radius_stack)
 
         calc_param_exageration_label = QLabel(self)
-        calc_param_exageration_label.setText(self.tr('z exageration:'))
+        calc_param_exageration_label.setText(self.tr('Z exaggeration:'))
         self.calc_param_exageration = QSpinBox(self)
         self.calc_param_exageration.setRange(1,1000000)
         self.calc_param_exageration.setValue(self.exageration_value)
@@ -1153,7 +1153,7 @@ class Processing(QWidget):
         if hasattr(self, 'win3'):
             self.win3.close()            
         
-        # extraction of name of the file, georeferencement, band…
+        # extraction of file name, georeferencing, band…
         
         self.im_originale = _open_raster(image_path)
         self.cols = self.im_originale.RasterXSize
@@ -1297,7 +1297,7 @@ class Processing(QWidget):
         if hasattr(self, 'win3'):
             self.win3.close()            
         
-        # contruction of a grid of pixels around the point of interest (i.e. grid)
+        # construction of a grid of pixels around the point of interest (i.e. grid)
         radius_value = self.calc_param_radius_spin.value()
         exageration_value = self.calc_param_exageration.value()
         x_res = float(getattr(self, 'x_res', 0.0))
@@ -1530,7 +1530,7 @@ class Calculation(QThread):
             if self.checked_von:
                 self.large_von = -(acc_vo - acc_vop - sum_h)
 
-            print(self.tr("Temps d execution : {} secondes ---").format(time.time() - start_time))
+            print(self.tr("Execution time: {} seconds ---").format(time.time() - start_time))
         except Exception as e:
             self.failed = True
             print(traceback.format_exc())
@@ -1650,7 +1650,7 @@ class BatchDialog(QDialog):
         self.exageration_spin = QSpinBox(self)
         self.exageration_spin.setRange(1, 1000000)
         self.exageration_spin.setValue(1)
-        param_layout.addRow(self.tr("z exageration:"), self.exageration_spin)
+        param_layout.addRow(self.tr("Z exaggeration:"), self.exageration_spin)
 
         self.check_blur = QCheckBox(self.tr("Prior smoothing (Gaussian kernel)"), self)
         self.check_blur.setChecked(False)
@@ -2095,15 +2095,9 @@ def main():
     app.setApplicationName("vSky2")
     app.setApplicationDisplayName("vSky2")
     app.setOrganizationName("Université de Bourgogne")
+    # The user interface is English only: no translator is installed so the
+    # application looks the same regardless of the system locale.
     QLocale.setDefault(QLocale.c())
-    locale = QLocale.system().name()
-    print(locale)
-    qtTranslator = QTranslator()
-    if qtTranslator.load("qt_" + locale, ":/"):
-        app.installTranslator(qtTranslator)
-    appTranslator = QTranslator()
-    if appTranslator.load("vSky_" + locale, ":/"):
-        app.installTranslator(appTranslator)
     win = MainWindow()
     gdal.SetErrorHandler(_gdal_error_handler)
     win.show()
