@@ -19,13 +19,16 @@ import shutil
 import subprocess
 import xml.etree.ElementTree as ET
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from vsky_version import __version__
+
 
 # ============================================================
 # Configuration
 # ============================================================
 
 APP_NAME = "vSky2"
-APP_VERSION = "2.0.0"
+APP_VERSION = __version__
 APP_MANUFACTURER = "Universite de Bourgogne"
 APP_DESCRIPTION = "vSky2 - Volumetric Open Sky"
 APP_EXE = "vSky2.exe"

@@ -1,6 +1,7 @@
 import sys, os
 import time
 import math
+import traceback
 from PyQt5 import QtWidgets, QtCore
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_EnableHighDpiScaling, True)
 QtWidgets.QApplication.setAttribute(QtCore.Qt.AA_UseHighDpiPixmaps, True)
@@ -33,8 +34,8 @@ from osgeo import gdal, osr
 gdal.DontUseExceptions()
 import numpy as np
 from PIL import Image
-from scipy.signal import fftconvolve
 import qrc_resources
+from vsky_version import __version__
 qrc_resources.qInitResources()
 # Taichi est le moteur de calcul cross-platform (NVIDIA/AMD/Intel/Apple/CPU).
 TAICHI_AVAILABLE = False
@@ -134,9 +135,18 @@ def _compute_numpy(image_final_npy, h_vert_cor, grid, progress_callback=None):
     return large_vo, large_vop
 
 
-def to_numpy(arr):
-    """Compatibility helper: results are already NumPy arrays."""
-    return arr
+def _compute_accumulators(image, h_vert_cor, grid, use_gpu, progress_callback=None):
+    """Compute VO/VOP accumulators with reflect-padded borders (no wraparound)."""
+    pad = int(np.abs(grid).max())
+    padded = np.pad(image, pad, mode='reflect') if pad > 0 else image
+    if use_gpu and TAICHI_AVAILABLE:
+        acc_vo, acc_vop = _compute_taichi(padded, h_vert_cor, grid, progress_callback)
+    else:
+        acc_vo, acc_vop = _compute_numpy(padded, h_vert_cor, grid, progress_callback)
+    if pad > 0:
+        acc_vo = acc_vo[pad:-pad, pad:-pad]
+        acc_vop = acc_vop[pad:-pad, pad:-pad]
+    return acc_vo, acc_vop
 
 
 def _local_wkt(name="Local"):
@@ -263,7 +273,7 @@ class MainWindow(QMainWindow):
         self.setWindowIcon(QIcon(ico_path))
 
         # Persistent settings (last directories, etc.)
-        self.settings = QSettings("vSky", "vSky")
+        self.settings = QSettings()
 
         # Enable drag & drop
         self.setAcceptDrops(True)
@@ -360,7 +370,24 @@ class MainWindow(QMainWindow):
         
         self.showMaximized()
         self._rescale_splash()
-      
+
+        self._orig_stdout = sys.stdout
+        self._orig_stderr = sys.stderr
+        self._log_stream = _LogStream(self)
+        self._log_stream.new_text.connect(self._forward_log)
+        sys.stdout = self._log_stream
+        sys.stderr = self._log_stream
+
+    def _forward_log(self, text):
+        central = self.centralWidget()
+        if hasattr(central, 'log_message'):
+            central.log_message(text)
+
+    def closeEvent(self, event):
+        sys.stdout = self._orig_stdout
+        sys.stderr = self._orig_stderr
+        super().closeEvent(event)
+
     def _rescale_splash(self):
         if self._splash_label is None or self._splash_pixmap.isNull():
             return
@@ -440,8 +467,8 @@ class MainWindow(QMainWindow):
             "<p>For more information contact:<br>"
             "Fabrice Monna: Fabrice.Monna@u-bourgogne.fr<br>"
             "Tanguy Rolland: Tanguy.Rolland@u-bourgogne.fr</p>"
-            "<p>Developed with Python 3, PyQt5, NumPy, SciPy, Pillow, GDAL and Taichi.</p>"
-            "<p><b>Version 2.0, 2020-2026</b></p>"
+            "<p>Developed with Python 3, PyQt5, NumPy, Pillow, GDAL and Taichi.</p>"
+            "<p><b>Version {}, 2020-2026</b></p>".format(__version__)
         )
         msg.setStandardButtons(QMessageBox.Ok)
         msg.exec_()
@@ -598,7 +625,7 @@ class CutDemDialog(QDialog):
         main_layout.addLayout(bottom_layout)
 
     def _open_dem(self):
-        last_dir = QSettings("vSky", "vSky").value("last_open_dir", ".")
+        last_dir = QSettings().value("last_open_dir", ".")
         image_path, _ = QFileDialog.getOpenFileName(
             self, self.tr("Open DEM"), last_dir,
             self.tr("Image Files (*.tif *.tiff *.png *.jpg *.jpeg);;All Files (*)")
@@ -612,7 +639,7 @@ class CutDemDialog(QDialog):
             QMessageBox.critical(self, self.tr("Error"), self.tr("Failed to open DEM: {}").format(exc))
             return
 
-        QSettings("vSky", "vSky").setValue("last_open_dir", os.path.dirname(image_path))
+        QSettings().setValue("last_open_dir", os.path.dirname(image_path))
 
         self.path_label.setText(image_path)
 
@@ -638,7 +665,8 @@ class CutDemDialog(QDialog):
             self.proj = _local_wkt()
 
         raw_array = self.im_originale.GetRasterBand(1).ReadAsArray().astype(np.float32)
-        _, self.im_array = tranformImage(raw_array)
+        nodata = self.im_originale.GetRasterBand(1).GetNoDataValue()
+        _, self.im_array = transform_image(raw_array, nodata)
 
         # Build preview pixmap: handle NaN and stretch only the valid range
         im8 = self._build_preview_image(self.im_array)
@@ -825,8 +853,10 @@ class CutDemDialog(QDialog):
         driver = gdal.GetDriverByName('GTIFF')
         desc = self.im_originale.GetDescription() or ""
         basename = os.path.splitext(os.path.basename(desc))[0] or "dem"
+        src_nodata = self.im_originale.GetRasterBand(1).GetNoDataValue()
 
         count = 0
+        failures = 0
         for row, y in enumerate(range(0, self.rows, step)):
             y2 = min(y + tile, self.rows)
             for col, x in enumerate(range(0, self.cols, step)):
@@ -845,17 +875,26 @@ class CutDemDialog(QDialog):
                 outname = os.path.join(out_dir, "{}_tile_{:02d}_{:02d}.tif".format(basename, row, col))
                 out_ds = driver.Create(outname, x2 - x, y2 - y, 1, gdal.GDT_Float32)
                 if out_ds is None:
+                    failures += 1
                     continue
 
                 out_ds.SetGeoTransform(new_gt)
                 out_ds.SetProjection(self.proj)
                 band = out_ds.GetRasterBand(1)
+                if src_nodata is not None:
+                    band.SetNoDataValue(float(src_nodata))
+                    tile_arr = np.where(np.isnan(tile_arr), np.float32(src_nodata), tile_arr)
+                else:
+                    band.SetNoDataValue(float('nan'))
                 band.WriteArray(tile_arr)
                 out_ds.FlushCache()
                 out_ds = None
                 count += 1
 
-        QMessageBox.information(self, self.tr("Done"), self.tr("Saved {} tile(s) to {}.").format(count, out_dir))
+        msg = self.tr("Saved {} tile(s) to {}.").format(count, out_dir)
+        if failures:
+            msg += self.tr(" {} tile(s) could not be written.").format(failures)
+        QMessageBox.information(self, self.tr("Done"), msg)
 
 
 class AspectRatioPixmapLabel(QLabel):
@@ -901,10 +940,6 @@ class Processing(QWidget):
             self.image_folder, os.path.splitext(self.image_name)[0] + "_processing"
         )
         self.setup_ui()
-        self._log_stream = _LogStream(self)
-        self._log_stream.new_text.connect(self.log_message)
-        sys.stdout = self._log_stream
-        sys.stderr = self._log_stream
         self.extract_image(image_path)
         self.log_message("[Taichi] Backend: {}".format("GPU" if GPU_AVAILABLE else "CPU"))
 
@@ -1149,8 +1184,9 @@ class Processing(QWidget):
 
         # transformation as an image, extraction of size, elimination of nan, contrast improvement
         
-        im_numpy = self.im_originale.GetRasterBand(1).ReadAsArray()                                              
-        self.wherenan, self.image_final_npy = tranformImage(im_numpy)
+        band = self.im_originale.GetRasterBand(1)
+        im_numpy = band.ReadAsArray()
+        self.wherenan, self.image_final_npy = transform_image(im_numpy, band.GetNoDataValue())
         image8bits = array_image(self.image_final_npy, 2.5, 97.5)
         
         im8 = Image.fromarray(image8bits).convert('RGBA')
@@ -1298,70 +1334,68 @@ class Processing(QWidget):
             self.calc = Calculation(self.grid, self.d, self.h_vert_cor,
                             self.image_final_npy, checked_vop, checked_von, checked_cuda)        
             
-        self.calc.countChanged.connect(self.onCountChanged)
         self.calc.progressChanged.connect(self.progress.setValue)
-        self.calc.start()       
-        
-        
-    def onCountChanged(self, value):
-            
-        self.progress.setValue(value)
-        
-        #print(self.d.size, self.progress.value())        
-        
-        # when calculation is done, save and show results
-        # Use self.sender() to get the actual Calculation instance, because
-        # self.calc may have been overwritten if the user started a new run.
-        
-        if self.progress.value() == (self.d.size -1):
-            
-            calc = self.sender()
-            
-            shift = 0
-            self.progress.setValue(0) # set the progression bar to zero
-            
-            self.out_vo = to_numpy(calc.large_vo[:,:,0]) / (2 * self.h_vert_cor.sum())  # collect result for VO
-            self.out_vo[self.wherenan] = np.nan 
-            self.nm = 'VO'       
-            self.im = self.out_vo
-            self.saveImage()  
-            self.win0 = PopupWin(self.im, shift, self.newname)    
-            self.win0.show()
-            
-            if self.calc_param_vop.isChecked():
-                
-                shift = shift + 50
-                self.out_vop = to_numpy(calc.large_vop[:,:,0]) / self.h_vert_cor.sum()    # result for vop
-                self.out_vop[self.wherenan] = np.nan 
-                self.nm = 'VOP'
-                self.im = self.out_vop
-                self.saveImage()                   
-                self.win1 = PopupWin(self.im, shift, self.newname)  
-                self.win1.show()
-                
-            if self.calc_param_von.isChecked():
-                
-                shift = shift + 50
-                self.out_von = to_numpy(calc.large_von[:,:,0]) / self.h_vert_cor.sum()   # result for von
-                self.out_von[self.wherenan] = np.nan 
-                self.nm = 'VON'
-                self.im = self.out_von
-                self.saveImage()
-                self.win2 = PopupWin(self.im, shift, self.newname)        
-                self.win2.show()
+        self.calc.finished.connect(self._on_calc_finished)
+        self.calc.errorOccurred.connect(self._on_calc_error)
+        self.bt_calc.setEnabled(False)
+        self.toggle_calc_mode.setEnabled(False)
+        self.calc.start()
 
-            if self.calc_param_von.isChecked() and self.calc_param_vop.isChecked():
-                
-                shift = shift + 50
-                self.nm = 'RGB_combine'
-                
-                self.out_vo = to_numpy(self.out_vo)
-                self.out_vop = to_numpy(self.out_vop)
-                self.out_von = to_numpy(self.out_von)
-                    
-                self.saveImageRGB()
-                self.win3 = PopupWinRGB(self.out_image, shift, self.newname)        
-                self.win3.show()
+    def _on_calc_finished(self):
+        calc = self.calc
+        self.bt_calc.setEnabled(True)
+        self.toggle_calc_mode.setEnabled(GPU_AVAILABLE)
+        if getattr(calc, 'failed', False):
+            return
+
+        # when calculation is done, save and show results
+        shift = 0
+        self.progress.setValue(0) # set the progression bar to zero
+
+        self.out_vo = calc.large_vo / (2 * self.h_vert_cor.sum())  # collect result for VO
+        self.out_vo[self.wherenan] = np.nan
+        self.nm = 'VO'
+        self.im = self.out_vo
+        self.saveImage()
+        self.win0 = PopupWin(self.im, shift, self.newname)
+        self.win0.show()
+
+        if self.calc_param_vop.isChecked():
+
+            shift = shift + 50
+            self.out_vop = calc.large_vop / self.h_vert_cor.sum()    # result for vop
+            self.out_vop[self.wherenan] = np.nan
+            self.nm = 'VOP'
+            self.im = self.out_vop
+            self.saveImage()
+            self.win1 = PopupWin(self.im, shift, self.newname)
+            self.win1.show()
+
+        if self.calc_param_von.isChecked():
+
+            shift = shift + 50
+            self.out_von = calc.large_von / self.h_vert_cor.sum()   # result for von
+            self.out_von[self.wherenan] = np.nan
+            self.nm = 'VON'
+            self.im = self.out_von
+            self.saveImage()
+            self.win2 = PopupWin(self.im, shift, self.newname)
+            self.win2.show()
+
+        if self.calc_param_von.isChecked() and self.calc_param_vop.isChecked():
+
+            shift = shift + 50
+            self.nm = 'RGB_combine'
+
+            self.saveImageRGB()
+            self.win3 = PopupWinRGB(self.out_image, shift, self.newname)
+            self.win3.show()
+
+    def _on_calc_error(self, msg):
+        self.log_message(self.tr("Calculation failed: {}").format(msg))
+        self.bt_calc.setEnabled(True)
+        self.toggle_calc_mode.setEnabled(GPU_AVAILABLE)
+        QMessageBox.critical(self, self.tr("Error"), self.tr("Calculation failed: {}").format(msg))
 
     def _build_output_name(self, extension='tif'):
         
@@ -1403,9 +1437,12 @@ class Processing(QWidget):
         driver.Register()
 
         output = driver.Create(self.newname, cols, rows, bands, gdal.GDT_Float32)
+        if output is None:
+            raise RuntimeError(f"Cannot create {self.newname}")
         output.SetGeoTransform(gt)
         output.SetProjection(proj)
         outBand = output.GetRasterBand(1)
+        outBand.SetNoDataValue(float('nan'))
         outBand.WriteArray(self.im, 0, 0)
         output.FlushCache()
         output = None
@@ -1421,8 +1458,8 @@ class Processing(QWidget):
         
         if self.check_8_bits.isChecked():
             newname8bits = self._build_output_name('jpg').replace(f'_{self.nm}_', f'_{self.nm}_8bits_')
-            self.im = Image.fromarray(self.out_image)
-            self.im.save(newname8bits)
+            img8 = Image.fromarray(self.out_image)
+            img8.save(newname8bits)
             self.log_message(self.tr("Processed file saved: {}").format(newname8bits))
 
     def saveImageRGB(self):            
@@ -1449,10 +1486,9 @@ class Processing(QWidget):
                   
 class Calculation(QThread):
 
-    
-    countChanged = pyqtSignal(int)
+
     progressChanged = pyqtSignal(int)
-    collect = pyqtSignal()
+    errorOccurred = pyqtSignal(str)
 
     
     def __init__(self, grid, d, h_vert_cor,
@@ -1472,39 +1508,33 @@ class Calculation(QThread):
     def run(self):
         # calculation of VO, VOP, VON
 
-        use_gpu = GPU_AVAILABLE and self.use_cuda
-        start_time = time.time()
+        try:
+            use_gpu = GPU_AVAILABLE and self.use_cuda
+            start_time = time.time()
 
-        def _emit_progress(i):
-            self.progressChanged.emit(i)
+            def _emit_progress(i):
+                self.progressChanged.emit(i)
 
-        if use_gpu and TAICHI_AVAILABLE:
-            acc_vo, acc_vop = _compute_taichi(
-                self.image_final_npy, self.h_vert_cor, self.grid,
-                progress_callback=_emit_progress
-            )
-        else:
-            acc_vo, acc_vop = _compute_numpy(
-                self.image_final_npy, self.h_vert_cor, self.grid,
+            image = np.nan_to_num(self.image_final_npy)
+            acc_vo, acc_vop = _compute_accumulators(
+                image, self.h_vert_cor, self.grid, use_gpu,
                 progress_callback=_emit_progress
             )
 
-        sum_h = float(self.h_vert_cor.sum())
-        H, W = acc_vo.shape
-        self.large_vo = np.zeros((H, W, 2), dtype=np.float32)
-        self.large_vo[:, :, 0] = acc_vo
+            sum_h = float(self.h_vert_cor.sum())
+            self.large_vo = acc_vo
 
-        if self.checked_vop or self.checked_von:
-            self.large_vop = np.zeros((H, W, 2), dtype=np.float32)
-            self.large_vop[:, :, 0] = acc_vop
+            if self.checked_vop or self.checked_von:
+                self.large_vop = acc_vop
 
-        if self.checked_von:
-            self.large_von = np.zeros((H, W, 2), dtype=np.float32)
-            self.large_von[:, :, 0] = -(acc_vo - acc_vop - sum_h)
+            if self.checked_von:
+                self.large_von = -(acc_vo - acc_vop - sum_h)
 
-        print(self.tr("Temps d execution : {} secondes ---").format(time.time() - start_time))
-        self.countChanged.emit(self.d.size - 1)
-        self.quit()
+            print(self.tr("Temps d execution : {} secondes ---").format(time.time() - start_time))
+        except Exception as e:
+            self.failed = True
+            print(traceback.format_exc())
+            self.errorOccurred.emit(f"{type(e).__name__}: {e}")
            
 class PopupWin(QWidget):
     
@@ -1659,6 +1689,18 @@ class BatchDialog(QDialog):
         output_layout.addRow(self.check_8bits)
         layout.addWidget(output_box)
 
+        # Output folder
+        folder = os.path.dirname(self.file_list[0])
+        default_out = os.path.join(folder, os.path.basename(folder.rstrip(os.sep)) + "_processing")
+        out_folder_box = QGroupBox(self.tr("Output folder"))
+        out_folder_layout = QHBoxLayout(out_folder_box)
+        self.output_folder_edit = QLineEdit(default_out, out_folder_box)
+        self.output_folder_btn = QPushButton(self.tr("Browse..."), out_folder_box)
+        self.output_folder_btn.clicked.connect(self._choose_output_folder)
+        out_folder_layout.addWidget(self.output_folder_edit)
+        out_folder_layout.addWidget(self.output_folder_btn)
+        layout.addWidget(out_folder_box)
+
         # GPU
         self.check_gpu = QCheckBox(self.tr("Use GPU"), self)
         self.check_gpu.setEnabled(GPU_AVAILABLE)
@@ -1676,6 +1718,11 @@ class BatchDialog(QDialog):
         self.pixel_progress = QProgressBar(self)
         self.pixel_progress.setMaximum(100)
         progress_layout.addWidget(self.pixel_progress)
+        self.log_text = QPlainTextEdit(self)
+        self.log_text.setReadOnly(True)
+        self.log_text.setMaximumBlockCount(500)
+        self.log_text.setMaximumHeight(120)
+        progress_layout.addWidget(self.log_text)
         layout.addWidget(progress_box)
 
         # Buttons
@@ -1756,7 +1803,28 @@ class BatchDialog(QDialog):
         self.blur_spin.setEnabled(self.check_blur.isChecked())
         self.blur_label.setEnabled(self.check_blur.isChecked())
 
+    def _choose_output_folder(self):
+        folder = QFileDialog.getExistingDirectory(
+            self, self.tr("Select output folder"), self.output_folder_edit.text() or "."
+        )
+        if folder:
+            self.output_folder_edit.setText(folder)
+
     def start_batch(self):
+        output_folder = self.output_folder_edit.text().strip()
+        if not output_folder:
+            QMessageBox.warning(self, self.tr("Warning"), self.tr("Select an output folder."))
+            return
+        output_folder = os.path.abspath(os.path.expanduser(output_folder))
+        try:
+            os.makedirs(output_folder, exist_ok=True)
+        except OSError as exc:
+            QMessageBox.warning(
+                self, self.tr("Warning"), self.tr("Could not create output folder: {}").format(exc)
+            )
+            return
+        self.output_folder_edit.setText(output_folder)
+
         self.btn_start.setEnabled(False)
         self.batch_calc = BatchCalculation(
             self.file_list,
@@ -1767,10 +1835,13 @@ class BatchDialog(QDialog):
             self.check_vop.isChecked(),
             self.check_von.isChecked(),
             self.check_gpu.isChecked(),
-            self.check_8bits.isChecked()
+            self.check_8bits.isChecked(),
+            output_folder
         )
         self.batch_calc.fileChanged.connect(self.on_file_changed)
         self.batch_calc.pixelProgress.connect(self.on_pixel_progress)
+        self.batch_calc.logMessage.connect(self.log_text.appendPlainText)
+        self.batch_calc.errorOccurred.connect(self.on_error)
         self.batch_calc.finished.connect(self.on_finished)
         self.batch_calc.start()
 
@@ -1782,7 +1853,14 @@ class BatchDialog(QDialog):
     def on_pixel_progress(self, value):
         self.pixel_progress.setValue(value)
 
+    def on_error(self, msg):
+        self.log_text.appendPlainText(self.tr("Calculation failed: {}").format(msg))
+        self.btn_start.setEnabled(True)
+        QMessageBox.critical(self, self.tr("Error"), self.tr("Calculation failed: {}").format(msg))
+
     def on_finished(self):
+        if getattr(self.batch_calc, 'failed', False):
+            return
         self.file_progress.setValue(len(self.file_list))
         self.pixel_progress.setValue(self.pixel_progress.maximum())
         self.file_label.setText(self.tr("Batch complete! {} files processed.").format(len(self.file_list)))
@@ -1795,9 +1873,11 @@ class BatchCalculation(QThread):
 
     fileChanged = pyqtSignal(int, str)
     pixelProgress = pyqtSignal(int)
+    logMessage = pyqtSignal(str)
+    errorOccurred = pyqtSignal(str)
 
     def __init__(self, file_list, radius, exageration, do_blur, blur_radius,
-                 checked_vop, checked_von, use_cuda, save_8bits):
+                 checked_vop, checked_von, use_cuda, save_8bits, output_folder):
         super(BatchCalculation, self).__init__()
         self.file_list = file_list
         self.radius = radius
@@ -1808,8 +1888,17 @@ class BatchCalculation(QThread):
         self.checked_von = checked_von
         self.use_cuda = use_cuda
         self.save_8bits = save_8bits
+        self.output_folder = output_folder
 
     def run(self):
+        try:
+            self._run()
+        except Exception as e:
+            self.failed = True
+            print(traceback.format_exc())
+            self.errorOccurred.emit(f"{type(e).__name__}: {e}")
+
+    def _run(self):
         use_gpu = GPU_AVAILABLE and self.use_cuda
 
         # Build grid
@@ -1828,7 +1917,9 @@ class BatchCalculation(QThread):
             try:
                 im_originale = _open_raster(image_path)
             except Exception as exc:
-                print(self.tr("Skipping {}: {}").format(image_name, exc))
+                msg = self.tr("Skipping {}: {}").format(image_name, exc)
+                print(msg)
+                self.logMessage.emit(msg)
                 continue
 
             gt = im_originale.GetGeoTransform()
@@ -1840,8 +1931,9 @@ class BatchCalculation(QThread):
             h_vert_cor = np.sqrt(self.radius**2 - d**2) * x_res / self.exageration
 
             # Read and prepare image
-            im_numpy = im_originale.GetRasterBand(1).ReadAsArray()
-            wherenan, image_final_npy = tranformImage(im_numpy)
+            band = im_originale.GetRasterBand(1)
+            im_numpy = band.ReadAsArray()
+            wherenan, image_final_npy = transform_image(im_numpy, band.GetNoDataValue())
             image_final_npy = np.nan_to_num(image_final_npy)
 
             # Optional blur
@@ -1859,14 +1951,10 @@ class BatchCalculation(QThread):
                     self.pixelProgress.emit(progress)
                     last_progress = progress
 
-            if use_gpu and TAICHI_AVAILABLE:
-                acc_vo, acc_vop = _compute_taichi(
-                    image_final_npy, h_vert_cor, grid, progress_callback=progress_callback
-                )
-            else:
-                acc_vo, acc_vop = _compute_numpy(
-                    image_final_npy, h_vert_cor, grid, progress_callback=progress_callback
-                )
+            acc_vo, acc_vop = _compute_accumulators(
+                image_final_npy, h_vert_cor, grid, use_gpu,
+                progress_callback=progress_callback
+            )
 
             out_vo = acc_vo / (2.0 * sum_h)
             out_vop = acc_vop / sum_h
@@ -1885,21 +1973,26 @@ class BatchCalculation(QThread):
 
             def save_single(data, label):
                 data[wherenan] = np.nan
-                outname = os.path.join(image_folder, f'{basename}_{label}_r={self.radius}{blur_str}{exagere}.tif')
+                outname = os.path.join(self.output_folder, f'{basename}_{label}_r={self.radius}{blur_str}{exagere}.tif')
                 driver = gdal.GetDriverByName('GTIFF')
                 driver.Register()
                 output = driver.Create(outname, cols, rows, bands, gdal.GDT_Float32)
+                if output is None:
+                    raise RuntimeError(f"Cannot create {outname}")
                 output.SetGeoTransform(gt)
                 output.SetProjection(proj)
                 outBand = output.GetRasterBand(1)
+                outBand.SetNoDataValue(float('nan'))
                 outBand.WriteArray(data, 0, 0)
                 output.FlushCache()
                 output = None
                 outBand = None
+                self.logMessage.emit(self.tr("Processed file saved: {}").format(outname))
                 if self.save_8bits:
                     img8 = array_image(data, 2.5, 97.5).astype(np.uint8)
-                    outname8 = os.path.join(image_folder, f'{basename}_{label}_8bits_r={self.radius}{blur_str}{exagere}.jpg')
+                    outname8 = os.path.join(self.output_folder, f'{basename}_{label}_8bits_r={self.radius}{blur_str}{exagere}.jpg')
                     Image.fromarray(img8).save(outname8)
+                    self.logMessage.emit(self.tr("Processed file saved: {}").format(outname8))
 
             # VO
             save_single(out_vo, 'VO')
@@ -1919,8 +2012,9 @@ class BatchCalculation(QThread):
                 b_channel = array_image(out_von, 2.5, 97.5)
                 rgb = np.dstack((r_channel, g_channel, b_channel)).astype(np.uint8)
                 if self.save_8bits:
-                    rgb_name = os.path.join(image_folder, f'{basename}_RGB_combine_8bits_r={self.radius}{blur_str}{exagere}.jpg')
+                    rgb_name = os.path.join(self.output_folder, f'{basename}_RGB_combine_8bits_r={self.radius}{blur_str}{exagere}.jpg')
                     Image.fromarray(rgb, mode='RGB').save(rgb_name)
+                    self.logMessage.emit(self.tr("Processed file saved: {}").format(rgb_name))
 
             im_originale = None
 
@@ -1935,21 +2029,29 @@ def blurring(in_array, size):
     x, y = np.mgrid[-size:size + 1, -size:size + 1]
     g = np.exp(-(x**2 / float(size) + y**2 / float(size)))
     g = (g / g.sum()).astype(in_array.dtype)
-    
-    return fftconvolve(padded_array, g, mode='valid')
-      
+
+    full_shape = (padded_array.shape[0] + g.shape[0] - 1,
+                  padded_array.shape[1] + g.shape[1] - 1)
+    spec = np.fft.rfft2(padded_array, s=full_shape) * np.fft.rfft2(g, s=full_shape)
+    conv = np.fft.irfft2(spec, s=full_shape)
+    # 'valid' region: starts at g.shape - 1, same length as in_array
+    sy, sx = g.shape[0] - 1, g.shape[1] - 1
+    return conv[sy:sy + in_array.shape[0], sx:sx + in_array.shape[1]].astype(np.float32)
 
 
-def tranformImage(image):
-    
-    # transform DEM in 32 bits and put Nan in place of +/- 32767
-    
+
+def transform_image(image, nodata=None):
+
+    # transform DEM in 32 bits and put Nan in place of +/- 32767 and nodata
+
     image = np.float32(image)
     image[image == -32767] = 'nan'
     image[image == 32767] = 'nan'
+    if nodata is not None:
+        image[np.isclose(image, nodata)] = 'nan'
     wherenan = np.isnan(image)
     image_final = image
-    
+
     return wherenan, image_final # return the palce an array witht the position of Nan and the transformed DEM
         
 
@@ -2000,7 +2102,7 @@ def main():
     if qtTranslator.load("qt_" + locale, ":/"):
         app.installTranslator(qtTranslator)
     appTranslator = QTranslator()
-    if appTranslator.load("vSky_" + locale, "./"):
+    if appTranslator.load("vSky_" + locale, ":/"):
         app.installTranslator(appTranslator)
     win = MainWindow()
     gdal.SetErrorHandler(_gdal_error_handler)

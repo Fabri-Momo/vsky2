@@ -57,7 +57,7 @@ a = Analysis(
         'osgeo', 'osgeo.gdal', 'osgeo.osr', 'osgeo.ogr',
         'osgeo._gdal', 'osgeo._osr', 'osgeo._ogr',
         'osgeo._gdalconst', 'osgeo._gdal_array',
-        'numpy', 'scipy', 'scipy.signal',
+        'numpy',
         'PIL', 'PIL.Image',
         'qrc_resources',
         'nvidia.cuda_nvrtc',
