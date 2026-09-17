@@ -27,7 +27,7 @@ plugin. That make them work out of the box, without any fancy installation.
 
 **Window version**
 
-**Installation**. On Windows, run the `vSky-2.0.0.msi` installer: it deploys
+**Installation**. On Windows, run the `vSky-<version>.msi` installer: it deploys
 vSky2 into `C:\Program Files\vSky2` and creates shortcuts. On macOS (Apple
 Silicon), open the `vSky2-macOS-Apple-Silicon.dmg` image and drag `vSky2.app`
 into Applications. Then, just launch the application.

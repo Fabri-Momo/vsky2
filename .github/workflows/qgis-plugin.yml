@@ -39,7 +39,8 @@ jobs:
           parser.read(Path('vsky-QGIS_plugin/metadata.txt'), encoding='utf-8')
           metadata = parser['general']
           assert metadata['name'] == 'vSky2'
-          assert metadata['version'] == '2.0.0'
+          expected = Path('vsky_version.py').read_text(encoding='utf-8').split('"')[1]
+          assert metadata['version'] == expected, (metadata['version'], expected)
           assert metadata['qgisMinimumVersion'] == '3.34'
           assert metadata['qgisMaximumVersion'] == '4.99'
           assert metadata['category'] == 'Raster'

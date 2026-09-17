@@ -50,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vSky2-Windows-x64
-          path: dist/vSky-2.0.0.msi
+          path: dist/vSky-*.msi
           if-no-files-found: error
 
   macos:
